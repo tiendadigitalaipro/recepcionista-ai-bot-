@@ -1,0 +1,29 @@
+{
+  "nombre": "Marilú Nails",
+  "tipo": "nail salon",
+  "nombre_bot": "Valeria",
+  "horario": "Lunes a Domingo 8:00 AM - 8:00 PM",
+  "direccion": "Urbanización Araguita 1, Bloque 6, Ocumare del Tuy, Estado Miranda",
+  "telefono": "+58 412-270-4534",
+  "booking_link": "",
+  "servicios": [
+    "Manicure básico",
+    "Pedicure básico",
+    "Uñas de gel",
+    "Uñas acrílicas",
+    "Nail art",
+    "Dipping powder",
+    "Relleno acrílico",
+    "Depilación de cejas"
+  ],
+  "precios": {
+    "Manicure básico": "Consultar",
+    "Pedicure básico": "Consultar",
+    "Uñas de gel": "Consultar",
+    "Uñas acrílicas": "Consultar",
+    "Relleno acrílico": "Consultar",
+    "Nail art": "Consultar",
+    "Depilación de cejas": "Consultar"
+  },
+  "info_extra": "Nailista: Marilú del Carmen Rojas. Atendemos con y sin cita. Escríbenos por WhatsApp para reservar tu turno. Hablamos español."
+}
