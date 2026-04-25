@@ -9,6 +9,7 @@
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.7.16",
+    "dotenv": "^17.4.2",
     "express": "^4.22.1",
     "openai": "^4.104.0",
     "pino": "^9.0.0",

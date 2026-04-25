@@ -6,6 +6,7 @@
  * ╚══════════════════════════════════════════════════════╝
  */
 
+require('dotenv').config();
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const OpenAI  = require('openai');
@@ -43,7 +44,7 @@ const OWNER_PHONE  = process.env.OWNER_PHONE  || '17865056242';
 // ── HF CLIENT (OpenAI-compatible) ───────────────────────
 const ai = new OpenAI({
     baseURL: 'https://router.huggingface.co/v1',
-    apiKey:  HF_TOKEN,
+    apiKey:  HF_TOKEN || 'placeholder',
 });
 
 // ── HISTORIAL POR NÚMERO ─────────────────────────────────
@@ -54,12 +55,27 @@ function perfil() {
     return JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf8'));
 }
 
-function systemPrompt(p) {
+function detectarPais(numero) {
+    if (!numero) return 'latam';
+    if (numero.startsWith('34'))  return 'es';
+    if (numero.startsWith('1'))   return 'us';
+    return 'latam';
+}
+
+function systemPrompt(p, numero) {
     const precios   = Object.entries(p.precios || {}).map(([k,v]) => `• ${k}: ${v}`).join('\n');
     const servicios = (p.servicios || []).join(', ');
+    const pais      = detectarPais(numero);
+
+    const regionHints = {
+        es:    'El cliente es de España. Usa vocabulario español de España (tuteo o usted según contexto). Moneda: euros (€).',
+        us:    'El cliente puede ser hispanohablante o angloparlante. Detecta el idioma y responde en el mismo. Moneda: dólares ($).',
+        latam: 'El cliente es hispanohablante de Latinoamérica. Usa "usted" o "tú" según el tono del cliente. Moneda según el negocio.',
+    };
+
     return `Eres ${p.nombre_bot || 'Valeria'}, la recepcionista virtual de ${p.nombre}.
 Eres amigable, profesional y muy concisa (máximo 4 líneas por respuesta).
-Detecta el idioma del cliente y responde en ese idioma (español o inglés).
+${regionHints[pais]}
 
 DATOS DEL NEGOCIO:
 • Nombre: ${p.nombre}
@@ -71,18 +87,19 @@ DATOS DEL NEGOCIO:
 • Servicios: ${servicios}
 
 PRECIOS:
-${precios}
+${precios || '• Consultar directamente'}
 
 INFO EXTRA:
 ${p.info_extra || ''}
 
 REGLAS IMPORTANTES:
-1. Para citas → da link de booking o teléfono directo.
-2. Si el cliente quiere hablar con humano → "te conecto con nuestro equipo en un momento".
-3. Si no tienes la info → no inventes, da el teléfono.
+1. Para citas → da el link de booking o el teléfono directo.
+2. Si el cliente quiere hablar con una persona → "te conecto con nuestro equipo en un momento".
+3. Si no tienes la información → no inventes, da el teléfono.
 4. Máximo 1-2 emojis por mensaje.
 5. Solo saluda en el primer mensaje de la conversación.
-6. Respuestas cortas y directas siempre.`;
+6. Respuestas cortas y directas siempre.
+7. Nunca menciones que eres una IA a menos que el cliente lo pregunte directamente.`;
 }
 
 function necesitaHumano(texto) {
@@ -103,7 +120,7 @@ async function responderIA(numero, texto) {
 
     try {
         const messages = [
-            { role: 'system', content: systemPrompt(p) },
+            { role: 'system', content: systemPrompt(p, numero) },
             ...hist.slice(-MAX_HIST),
             { role: 'user', content: texto }
         ];
