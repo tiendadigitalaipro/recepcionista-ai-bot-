@@ -1,25 +1,29 @@
-[build]
-
 app = "recepcionista-ai-bot"
 primary_region = "mia"
 
-[[services]]
+[build]
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+
+[http_service]
   internal_port = 3000
-  protocol = "tcp"
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
 
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 50
+    soft_limit = 25
 
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
 
-  [[services.http_checks]]
-    interval = "30s"
-    timeout = "10s"
-    path = "/qr"
-
-[mounts]
+[[mounts]]
   source = "auth_data"
   destination = "/app/auth_session"

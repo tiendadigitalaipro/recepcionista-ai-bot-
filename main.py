@@ -11,20 +11,22 @@ from collections import defaultdict
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import requests
-import google.generativeai as genai
+from openai import OpenAI
 
 app = FastAPI()
 
-# ── CONFIG (variables de entorno o editar aquí) ──────────
+# ── CONFIG ───────────────────────────────────────────────
 GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY", "")
-GREEN_API_ID    = os.getenv("GREEN_API_ID", "")     # ej: 1234567890
-GREEN_API_TOKEN = os.getenv("GREEN_API_TOKEN", "")  # ej: abc123...
-OWNER_PHONE     = os.getenv("OWNER_PHONE", "")      # número dueño (sin +), ej: 17865056242
+GREEN_API_ID    = os.getenv("GREEN_API_ID", "")
+GREEN_API_TOKEN = os.getenv("GREEN_API_TOKEN", "")
+OWNER_PHONE     = os.getenv("OWNER_PHONE", "")
 PROFILE_FILE    = os.getenv("PROFILE_FILE", "perfil_negocio.json")
 
-# ── GEMINI ───────────────────────────────────────────────
-genai.configure(api_key=GEMINI_API_KEY)
-modelo = genai.GenerativeModel("gemini-1.5-flash")
+# ── GEMINI vía OpenAI-compatible API ─────────────────────
+ai = OpenAI(
+    api_key=GEMINI_API_KEY,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
 
 # ── MEMORIA DE CONVERSACIONES (en memoria, 24h implícito) ─
 conversaciones = defaultdict(list)
@@ -95,18 +97,20 @@ def procesar_mensaje(numero, texto):
         historial = historial[-MAX_HISTORIAL:]
 
     try:
-        chat = modelo.start_chat(history=historial)
-        # Inyectar prompt de sistema en el primer turno si historial vacío
-        if not historial:
-            prompt_completo = prompt_sistema(perfil) + f"\n\nCliente dice: {texto}"
-        else:
-            prompt_completo = texto
+        messages = [{"role": "system", "content": prompt_sistema(perfil)}]
+        for h in historial[-MAX_HISTORIAL:]:
+            messages.append({"role": h["role"], "content": h["parts"][0]})
+        messages.append({"role": "user", "content": texto})
 
-        respuesta = chat.send_message(prompt_completo)
-        texto_respuesta = respuesta.text.strip()
+        res = ai.chat.completions.create(
+            model="gemini-1.5-flash",
+            messages=messages,
+            max_tokens=200,
+        )
+        texto_respuesta = res.choices[0].message.content.strip()
 
-        historial.append({"role": "user", "parts": [texto]})
-        historial.append({"role": "model", "parts": [texto_respuesta]})
+        historial.append({"role": "user",      "parts": [texto]})
+        historial.append({"role": "assistant",  "parts": [texto_respuesta]})
         conversaciones[numero] = historial
 
         if necesita_escalacion(texto) and OWNER_PHONE:
